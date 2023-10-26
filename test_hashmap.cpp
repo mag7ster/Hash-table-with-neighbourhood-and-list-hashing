@@ -1,11 +1,14 @@
 #include "hash_map.h"
+#include <algorithm>
 #include <iostream>
 #include <cstdlib>
 #include <functional>
 #include <stdexcept>
 #include <map>
 
-void fail(const char *message) {
+using namespace MyHashTable;
+
+void fail(const char* message) {
     std::cerr << "Fail:\n";
     std::cerr << message;
     std::cout << "I want to get WA\n";
@@ -18,13 +21,13 @@ struct StrangeInt {
     StrangeInt() {
         ++counter;
     }
-    StrangeInt(int x): x(x) {
+    StrangeInt(int x) : x(x) {
         ++counter;
     }
-    StrangeInt(const StrangeInt& rs): x(rs.x) {
+    StrangeInt(const StrangeInt& rs) : x(rs.x) {
         ++counter;
     }
-    bool operator ==(const StrangeInt& rs) const {
+    bool operator==(const StrangeInt& rs) const {
         return x == rs.x;
     }
 
@@ -36,7 +39,7 @@ struct StrangeInt {
         --counter;
     }
 
-    friend std::ostream& operator <<(std::ostream& out, const StrangeInt& x) {
+    friend std::ostream& operator<<(std::ostream& out, const StrangeInt& x) {
         out << x.x;
         return out;
     }
@@ -44,27 +47,27 @@ struct StrangeInt {
 int StrangeInt::counter;
 
 namespace std {
-template<> struct hash<StrangeInt> {
+template <>
+struct hash<StrangeInt> {
     size_t operator()(const StrangeInt& x) const {
         return x.x;
     }
 };
-}
+}  // namespace std
 
 namespace internal_tests {
 
 /* check that hash_map provides correct interface
  * in terms of constness */
 void const_check() {
+
     const HashMap<int, int> map{{1, 5}, {3, 4}, {2, 1}};
     std::cerr << "check constness\n";
     if (map.empty())
         fail("incorrect empty method");
 
-    static_assert(std::is_same<
-        HashMap<int, int>::const_iterator,
-        decltype(map.begin())
-    >::value, "'begin' returns not a const iterator");
+    static_assert(std::is_same<HashMap<int, int>::const_iterator, decltype(map.begin())>::value,
+                  "'begin' returns not a const iterator");
     auto hash_f = map.hash_function();
     std::cerr << hash_f(0) << "\n";
     for (auto cur : map)
@@ -77,10 +80,8 @@ void const_check() {
     if (it != map.end())
         fail("found 7? incorrect find or insert");
 
-    static_assert(std::is_same<
-        const int,
-        std::remove_reference<decltype(map.at(1))>::type
-    >::value, "'At' returns non const");
+    static_assert(std::is_same<const int, std::remove_reference<decltype(map.at(1))>::type>::value,
+                  "'At' returns non const");
     std::cerr << "ok!\n";
 }
 
@@ -91,12 +92,10 @@ void exception_check() {
     try {
         auto cur = map.at(8);
         std::cerr << cur << "\n";
-    }
-    catch (const std::out_of_range& e) {
+    } catch (const std::out_of_range& e) {
         std::cerr << "ok!\n";
         return;
-    }
-    catch (...) {
+    } catch (...) {
         fail("'at' doesn't throw std::out_of_range");
     }
     fail("'at' doesn't throw anything");
@@ -107,22 +106,14 @@ void check_destructor() {
     std::cerr << "check destructor... ";
     StrangeInt::init();
     {
-        HashMap<StrangeInt, int> s{
-            {5, 4},
-            {3, 2},
-            {1, 0}
-        };
+        HashMap<StrangeInt, int> s{{5, 4}, {3, 2}, {1, 0}};
         if (s.size() != 3)
             fail("wrong size");
     }
     if (StrangeInt::counter)
         fail("wrong destructor (or constructors)");
     {
-        HashMap<StrangeInt, int> s{
-            {-3, 3},
-            {-2, 2},
-            {-1, 1}
-        };
+        HashMap<StrangeInt, int> s{{-3, 3}, {-2, 2}, {-1, 1}};
         HashMap<StrangeInt, int> s1(s);
         s1.insert(std::make_pair(0, 0));
         HashMap<StrangeInt, int> s2(s1);
@@ -133,7 +124,6 @@ void check_destructor() {
         fail("wrong destructor (or constructors)");
     std::cerr << "ok!\n";
 }
-
 
 /* check operator [] for reference correctness */
 void reference_check() {
@@ -166,15 +156,10 @@ void hash_check() {
         }
     };
     HashMap<std::string, std::string, Hasher> map{
-        {"aba", "caba"},
-        {"simple", "case"},
-        {"test", "test"}
-    };
+        {"aba", "caba"}, {"simple", "case"}, {"test", "test"}};
     for (auto cur : map)
         std::cerr << cur.first << " " << cur.second << "\n";
-    auto simple_hash = [](unsigned long long x) -> size_t {
-        return x % 17239;
-    };
+    auto simple_hash = [](unsigned long long x) -> size_t { return x % 17239; };
     HashMap<int, std::string, decltype(simple_hash)> second_map(simple_hash);
     second_map.insert(std::make_pair(0, "a"));
     second_map.insert(std::make_pair(0, "b"));
@@ -189,7 +174,7 @@ void hash_check() {
 
     HashMap<int, int, std::function<size_t(int)>> stupid_map(stupid_hash);
     auto stupid_hash_fn = stupid_map.hash_function();
-    for(int i = 0; i < 1000; ++i) {
+    for (int i = 0; i < 1000; ++i) {
         stupid_map[i] = i + 1;
         if (stupid_hash_fn(i))
             fail("wrong hash function in class");
@@ -225,10 +210,9 @@ void check_iterators() {
         HashMap<int, int> first{{0, 0}};
         HashMap<int, int>::iterator just_iterator;
         HashMap<int, int>::iterator it = first.begin();
-        static_assert(std::is_same<
-            const int,
-            std::remove_reference<decltype(it->first)>::type
-        >::value, "Iterator's key type isn't const");
+        static_assert(
+            std::is_same<const int, std::remove_reference<decltype(it->first)>::type>::value,
+            "Iterator's key type isn't const");
         if (it++ != first.begin())
             fail("bad post ++");
         if (!(it == first.end()))
@@ -257,6 +241,47 @@ void check_iterators() {
     std::cerr << "ok!\n";
 }
 
+void check_move() {
+    std::cerr << "check move...\n";
+    {
+        HashMap<int, int> map{{3, 4}, {3, 5}, {4, 7}, {-1, -3}};
+
+        auto moved = std::move(map);
+
+        {
+            std::cerr << "check references... ";
+            moved[3] = 7;
+            if (moved[3] != 7 || moved[0] != 0)
+                fail("incorrect [ ]");
+            auto it = moved.find(4);
+            if (it == moved.end())
+                fail("not found 4, incorrect find or insert");
+            it->second = 3;
+            auto cur = moved.find(4);
+            if (cur->second != 3)
+                fail("can't modificate through iterator");
+            std::cerr << "ok!\n";
+        }
+
+        map = std::move(moved);
+
+        {
+            std::cerr << "check references... ";
+            map[3] = 7;
+            if (map[3] != 7 || map[0] != 0)
+                fail("incorrect [ ]");
+            auto it = map.find(4);
+            if (it == map.end())
+                fail("not found 4, incorrect find or insert");
+            it->second = 3;
+            auto cur = map.find(4);
+            if (cur->second != 3)
+                fail("can't modificate through iterator");
+            std::cerr << "ok!\n";
+        }
+    }
+}
+
 void run_all() {
     const_check();
     exception_check();
@@ -265,8 +290,9 @@ void run_all() {
     check_destructor();
     check_copy();
     check_iterators();
+    check_move();
 }
-} // namespace internal_tests
+}  // namespace internal_tests
 
 int main() {
     internal_tests::run_all();
